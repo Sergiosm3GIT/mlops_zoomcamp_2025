@@ -1,0 +1,8 @@
+env*/
+artifacts/
+mlartifacts/
+data/
+mlruns/
+output/
+02-experiment-tracking/HW2/backend.db
+venv*/
