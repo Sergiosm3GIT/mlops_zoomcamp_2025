@@ -11,17 +11,23 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import root_mean_squared_error
 
 import mlflow
+from prefect import flow, task
 
-mlflow.set_tracking_uri("http://localhost:5000")
+import datetime
+from dateutil.relativedelta import relativedelta
+
+
+mlflow.set_tracking_uri("http://localhost:5050")
 mlflow.set_experiment("nyc-taxi-experiment")
 
 models_folder = Path('models')
 models_folder.mkdir(exist_ok=True)
 
 
-
+@task(retries=3,retry_delay_seconds=2,log_prints=True)
 def read_dataframe(year, month):
     url = f'https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_{year}-{month:02d}.parquet'
+    print(f"Reading data from {url}")
     df = pd.read_parquet(url)
 
     df['duration'] = df.lpep_dropoff_datetime - df.lpep_pickup_datetime
@@ -36,7 +42,7 @@ def read_dataframe(year, month):
 
     return df
 
-
+@task
 def create_X(df, dv=None):
     categorical = ['PU_DO']
     numerical = ['trip_distance']
@@ -50,7 +56,7 @@ def create_X(df, dv=None):
 
     return X, dv
 
-
+@task
 def train_model(X_train, y_train, X_val, y_val, dv):
     with mlflow.start_run() as run:
         train = xgb.DMatrix(X_train, label=y_train)
@@ -88,7 +94,7 @@ def train_model(X_train, y_train, X_val, y_val, dv):
 
         return run.info.run_id
 
-
+@task(log_prints=True)
 def run(year, month):
     df_train = read_dataframe(year=year, month=month)
 
@@ -108,15 +114,18 @@ def run(year, month):
     return run_id
 
 
-if __name__ == "__main__":
-    import argparse
+@flow(log_prints=True)
+def main_flow(year: int, month: int):
+    # Call the task with parameters
+    run_id = run(year=year, month=month)
 
-    parser = argparse.ArgumentParser(description='Train a model to predict taxi trip duration.')
-    parser.add_argument('--year', type=int, required=True, help='Year of the data to train on')
-    parser.add_argument('--month', type=int, required=True, help='Month of the data to train on')
-    args = parser.parse_args()
-
-    run_id = run(year=args.year, month=args.month)
-
+    # Save the run_id to a file
     with open("run_id.txt", "w") as f:
         f.write(run_id)
+
+if __name__ == "__main__":
+    # Default parameters 
+    train_date =  datetime.date.today().replace(day=1) - relativedelta(months=4) 
+    year = train_date.year
+    month = train_date.month
+    main_flow(year = year, month = month)
