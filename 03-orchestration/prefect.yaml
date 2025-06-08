@@ -14,26 +14,22 @@ push: null
 
 # pull section allows you to provide instructions for cloning this project in remote locations
 pull:
-- prefect.deployments.steps.git_clone:
-    repository: https://github.com/Sergiosm3GIT/mlops_zoomcamp_2025.git
-    branch: main
-    access_token: '{{ prefect.blocks.secret.deployment-taxi-duration-pred-main-flow-repo-token
-      }}'
+- prefect.deployments.steps.set_working_directory:
+    directory: C:\Users\sergi\OneDrive\Documentos\MLOps2025\mlops-sergiosm3\03-orchestration
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
-- name: taxi-duration-pred
+- name: taxi-pred-deploy
   version: null
   tags: []
   concurrency_limit: null
   description: null
   entrypoint: duration-prediction.py:main_flow
-  parameters: {}
+  parameters:
+    year: 2024
+    month: 10
   work_pool:
     name: mlops-03-orchestration
     work_queue_name: null
     job_variables: {}
-  schedules:
-  - rrule: RRULE:FREQ=MONTHLY;INTERVAL=1
-    timezone: America/Santiago
-    active: true
+  schedules: []

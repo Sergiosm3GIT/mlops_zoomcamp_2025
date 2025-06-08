@@ -16,8 +16,11 @@ from prefect import flow, task
 import datetime
 from dateutil.relativedelta import relativedelta
 
+import sys
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-mlflow.set_tracking_uri("http://localhost:5050")
+mlflow.set_tracking_uri("http://localhost:5000")
 mlflow.set_experiment("nyc-taxi-experiment")
 
 models_folder = Path('models')
@@ -29,6 +32,7 @@ def read_dataframe(year, month):
     url = f'https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_{year}-{month:02d}.parquet'
     print(f"Reading data from {url}")
     df = pd.read_parquet(url)
+    print(f"Data registers from {year}-{month:02d} : {df.shape}")
 
     df['duration'] = df.lpep_dropoff_datetime - df.lpep_pickup_datetime
     df.duration = df.duration.apply(lambda td: td.total_seconds() / 60)
@@ -97,6 +101,7 @@ def train_model(X_train, y_train, X_val, y_val, dv):
 @task(log_prints=True)
 def run(year, month):
     df_train = read_dataframe(year=year, month=month)
+    print(f"Data registers from {year}-{month:02d} : {df_train.shape}")
 
     next_year = year if month < 12 else year + 1
     next_month = month + 1 if month < 12 else 1
